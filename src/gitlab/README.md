@@ -95,6 +95,22 @@ MCP Server for the GitLab API, enabling project management, file operations, and
      - `ref` (optional string): Source branch/commit for new branch
    - Returns: Created branch reference
 
+10. `get_issue`
+   - Get details of a specific issue
+   - Inputs:
+     - `project_id` (string): Project ID or URL-encoded path
+     - `issue_iid` (number): Issue internal ID
+   - Returns: Issue details
+
+11. `get_issue_comments`
+   - Get comments from a specific issue
+   - Inputs:
+     - `project_id` (string): Project ID or URL-encoded path
+     - `issue_iid` (number): Issue internal ID
+     - `page` (optional number): Page number for pagination
+     - `per_page` (optional number): Results per page (default 20)
+   - Returns: Array of issue comments
+
 ## Setup
 
 ### Personal Access Token

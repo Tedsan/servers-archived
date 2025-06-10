@@ -20,6 +20,7 @@ import {
   GitLabSearchResponseSchema,
   GitLabTreeSchema,
   GitLabCommitSchema,
+  GitLabIssueCommentSchema,
   CreateRepositoryOptionsSchema,
   CreateIssueOptionsSchema,
   CreateMergeRequestOptionsSchema,
@@ -33,6 +34,8 @@ import {
   CreateMergeRequestSchema,
   ForkRepositorySchema,
   CreateBranchSchema,
+  GetIssueSchema,
+  GetIssueCommentsSchema,
   type GitLabFork,
   type GitLabReference,
   type GitLabRepository,
@@ -44,6 +47,7 @@ import {
   type GitLabTree,
   type GitLabCommit,
   type FileOperation,
+  type GitLabIssueComment,
 } from './schemas.js';
 
 const server = new Server({
@@ -359,6 +363,51 @@ async function createRepository(
   return GitLabRepositorySchema.parse(await response.json());
 }
 
+async function getIssue(
+  projectId: string,
+  issueIid: number
+): Promise<GitLabIssue> {
+  const response = await fetch(
+    `${GITLAB_API_URL}/projects/${encodeURIComponent(projectId)}/issues/${issueIid}`,
+    {
+      headers: {
+        "Authorization": `Bearer ${GITLAB_PERSONAL_ACCESS_TOKEN}`
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`GitLab API error: ${response.statusText}`);
+  }
+
+  return GitLabIssueSchema.parse(await response.json());
+}
+
+async function getIssueComments(
+  projectId: string,
+  issueIid: number,
+  page: number = 1,
+  perPage: number = 20
+): Promise<GitLabIssueComment[]> {
+  const url = new URL(`${GITLAB_API_URL}/projects/${encodeURIComponent(projectId)}/issues/${issueIid}/notes`);
+  url.searchParams.append("page", page.toString());
+  url.searchParams.append("per_page", perPage.toString());
+  url.searchParams.append("sort", "asc");
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      "Authorization": `Bearer ${GITLAB_PERSONAL_ACCESS_TOKEN}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitLab API error: ${response.statusText}`);
+  }
+
+  const comments = await response.json();
+  return z.array(GitLabIssueCommentSchema).parse(comments);
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -406,6 +455,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "create_branch",
         description: "Create a new branch in a GitLab project",
         inputSchema: zodToJsonSchema(CreateBranchSchema)
+      },
+      {
+        name: "get_issue",
+        description: "Get details of a specific issue in a GitLab project",
+        inputSchema: zodToJsonSchema(GetIssueSchema)
+      },
+      {
+        name: "get_issue_comments",
+        description: "Get comments from a specific issue in a GitLab project",
+        inputSchema: zodToJsonSchema(GetIssueCommentsSchema)
       }
     ]
   };
@@ -493,6 +552,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { project_id, ...options } = args;
         const mergeRequest = await createMergeRequest(project_id, options);
         return { content: [{ type: "text", text: JSON.stringify(mergeRequest, null, 2) }] };
+      }
+
+      case "get_issue": {
+        const args = GetIssueSchema.parse(request.params.arguments);
+        const issue = await getIssue(args.project_id, args.issue_iid);
+        return { content: [{ type: "text", text: JSON.stringify(issue, null, 2) }] };
+      }
+
+      case "get_issue_comments": {
+        const args = GetIssueCommentsSchema.parse(request.params.arguments);
+        const comments = await getIssueComments(args.project_id, args.issue_iid, args.page, args.per_page);
+        return { content: [{ type: "text", text: JSON.stringify(comments, null, 2) }] };
       }
 
       default:

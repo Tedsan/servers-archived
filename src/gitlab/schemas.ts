@@ -204,6 +204,18 @@ export const GitLabIssueSchema = z.object({
   web_url: z.string() // Changed from html_url to match GitLab API
 });
 
+// Issue comment related schemas
+export const GitLabIssueCommentSchema = z.object({
+  id: z.number(),
+  body: z.string(),
+  author: GitLabUserSchema,
+  created_at: z.string(),
+  updated_at: z.string(),
+  system: z.boolean(),
+  noteable_id: z.number(),
+  noteable_type: z.string()
+});
+
 // Merge Request related schemas (equivalent to Pull Request)
 export const GitLabMergeRequestDiffRefSchema = z.object({
   base_sha: z.string(),
@@ -304,6 +316,16 @@ export const CreateBranchSchema = ProjectParamsSchema.extend({
     .describe("Source branch/commit for new branch")
 });
 
+export const GetIssueSchema = ProjectParamsSchema.extend({
+  issue_iid: z.number().describe("Issue internal ID")
+});
+
+export const GetIssueCommentsSchema = ProjectParamsSchema.extend({
+  issue_iid: z.number().describe("Issue internal ID"),
+  page: z.number().optional().describe("Page number for pagination (default: 1)"),
+  per_page: z.number().optional().describe("Number of results per page (default: 20)")
+});
+
 // Export types
 export type GitLabAuthor = z.infer<typeof GitLabAuthorSchema>;
 export type GitLabFork = z.infer<typeof GitLabForkSchema>;
@@ -323,3 +345,4 @@ export type CreateMergeRequestOptions = z.infer<typeof CreateMergeRequestOptions
 export type CreateBranchOptions = z.infer<typeof CreateBranchOptionsSchema>;
 export type GitLabCreateUpdateFileResponse = z.infer<typeof GitLabCreateUpdateFileResponseSchema>;
 export type GitLabSearchResponse = z.infer<typeof GitLabSearchResponseSchema>;
+export type GitLabIssueComment = z.infer<typeof GitLabIssueCommentSchema>;
